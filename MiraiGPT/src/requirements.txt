@@ -1,3 +1,6 @@
 streamlit
 langchain_google_genai
 google-auth
+langchain-chroma
+langchain-community
+sentence-transformers

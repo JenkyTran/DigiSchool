@@ -1,58 +1,73 @@
-import os
 import streamlit as st
-from langchain_google_genai import ChatGoogleGenerativeAI
+import os
+from langchain.docstore.document import Document
+from sentence_transformers import SentenceTransformer
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain import hub
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# Thiết lập API Key nếu chưa có
-if 'GOOGLE_API_KEY' not in os.environ:
-    os.environ['GOOGLE_API_KEY'] = "AIzaSyC6A1MJR-kk-KetpF3Llqna_GE4hulhwMU"
+# Thiết lập biến môi trường
+os.environ["GOOGLE_API_KEY"] = "AIzaSyC6A1MJR-kk-KetpF3Llqna_GE4hulhwMU"
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_API_KEY"] = "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"
+
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 # Khởi tạo LLM từ Google Generative AI
 llm = ChatGoogleGenerativeAI(model='gemini-1.5-flash', temperature=0.9)
 
 # Tiêu đề của ứng dụng
-st.title("Demo MiraiGPT v1 - Hội thoại")
+st.title("Tra cứu tài liệu với MiraiGPT")
 
-# Khởi tạo session_state để lưu lịch sử các tin nhắn nếu chưa có
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# Tạo một khung nhập văn bản cho người dùng
+user_input = st.text_input("Nhập câu tài liệu của bạn:", "")
 
+# Nếu văn bản đầu vào không rỗng
+if user_input:
+    # Tạo document từ đầu vào của người dùng
+    docs = [Document(page_content=user_input)]
 
-# Hàm để in toàn bộ log trò chuyện
-def print_chat_log():
-    st.write("### Lịch sử trò chuyện:")
-    for message in st.session_state.messages:
-        if message["role"] == "user":
-            st.write(f"**Người dùng**: {message['content']}")
-        elif message["role"] == "assistant":
-            st.write(f"**Trợ lý**: {message['content']}")
-    st.write("---")  # Đường kẻ để tách log và giao diện hiện tại
+    # Tạo mô hình embedding từ sentence-transformers
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
+    # Tách văn bản thành các phần nhỏ
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    splits = text_splitter.split_documents(docs)
 
-# Hiển thị lịch sử hội thoại
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+    # Kiểm tra nếu có dữ liệu sau khi chia nhỏ
+    if splits:
+        # Tạo vectorstore từ các đoạn văn bản đã chia
+        vectorstore = Chroma.from_documents(documents=splits, embedding=embedding_model)
 
-# Khung chat để người dùng nhập câu hỏi
-if prompt := st.chat_input("Nhập câu hỏi của bạn:"):
-    # Kiểm tra nếu người dùng gửi mã #not2024
-    if prompt.strip() == "#not2024":
-        print_chat_log()  # Gọi hàm in log khi người dùng gửi #not2024
+        # Retrieve and generate using the relevant snippets
+        retriever = vectorstore.as_retriever()
+        prompt_template = hub.pull("rlm/rag-prompt")
+
+        def format_docs(docs):
+            return "\n\n".join(doc.page_content for doc in docs)
+
+        rag_chain = (
+            {"context": retriever | format_docs, "question": RunnablePassthrough()}
+            | prompt_template
+            | llm
+            | StrOutputParser()
+        )
+
+        # Nhập câu hỏi của người dùng
+        if user_prompt := st.chat_input("Nhập câu hỏi của bạn:"):
+            with st.chat_message("user"):
+                st.markdown(user_prompt)
+
+            with st.chat_message("assistant"):
+                response = rag_chain.invoke(user_prompt)
+
+                # Hiển thị phản hồi của trợ lý trong khung chat
+                st.markdown(response)
     else:
-        # Thêm câu hỏi của người dùng vào lịch sử
-        st.session_state.messages.append({"role": "user", "content": prompt})
-
-        # Hiển thị câu hỏi của người dùng trong khung chat
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Lấy phản hồi từ LLM
-        with st.chat_message("assistant"):
-            response = llm.invoke(prompt)
-            assistant_message = response.content
-
-            # Hiển thị phản hồi của trợ lý trong khung chat
-            st.markdown(assistant_message)
-
-            # Lưu phản hồi của trợ lý vào lịch sử hội thoại
-            st.session_state.messages.append({"role": "assistant", "content": assistant_message})
+        st.error("Không thể tách văn bản thành các phần nhỏ.")
+else:
+    st.warning("Vui lòng nhập câu tài liệu của bạn.")
