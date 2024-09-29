@@ -4,7 +4,7 @@ langchain
 langchain-community
 langchain-core
 langchain-google-genai
-langchain-hub
+langchainhub
 langchain-chroma
 chromadb
 bs4
