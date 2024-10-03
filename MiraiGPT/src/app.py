@@ -57,16 +57,17 @@ if splits:
         | StrOutputParser()
     )
 
-    # Nhập câu hỏi của người dùng
-    if user_prompt := st.chat_input("Nhập câu hỏi của bạn:"):
-        with st.chat_message("user"):
-            st.markdown(user_prompt)
 
-        with st.chat_message("assistant"):
-            response = rag_chain.invoke(user_prompt)
-
-            # Hiển thị phản hồi của trợ lý trong khung chat
-            st.markdown(response)
-else:
-    st.error("Không thể tách văn bản thành các phần nhỏ.")
+#     # Nhập câu hỏi của người dùng
+#     if user_prompt := st.chat_input("Nhập câu hỏi của bạn:"):
+#         with st.chat_message("user"):
+#             st.markdown(user_prompt)
+#
+#         with st.chat_message("assistant"):
+#             response = rag_chain.invoke(user_prompt)
+#
+#             # Hiển thị phản hồi của trợ lý trong khung chat
+#             st.markdown(response)
+# else:
+#     st.error("Không thể tách văn bản thành các phần nhỏ.")
 
