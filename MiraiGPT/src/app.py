@@ -45,7 +45,13 @@ if user_input:
 
         # Retrieve and generate using the relevant snippets
         retriever = vectorstore.as_retriever()
-        prompt_template = hub.pull("rlm/rag-prompt")
+        prompt_template = """
+            You are an AI assistant asked to answer the following document-based question if information is available:
+            {context}
+
+            If there is no relevant information in the document, answer the question based on your knowledge. 
+            Question: {question}
+            """
 
         def format_docs(docs):
             return "\n\n".join(doc.page_content for doc in docs)
