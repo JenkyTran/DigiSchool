@@ -11,14 +11,17 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.document_loaders import PyPDFLoader
 import tempfile
+import warnings
 
+# Turn off all warnings
+warnings.filterwarnings("ignore")
 
 os.environ["GOOGLE_API_KEY"] = "AIzaSyC6A1MJR-kk-KetpF3Llqna_GE4hulhwMU"
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_API_KEY"] = "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"
 
-PERSIST_DIRECTORY = '/home/jenky/Documents/DigiSchool/MiraiGPT/chroma_db'
-llm = ChatGoogleGenerativeAI(model='gemini-1.5-flash', temperature=0.9)
+PERSIST_DIRECTORY = './MiraiGPT/chroma_db'
+llm = ChatGoogleGenerativeAI(model='gemini-1.5-flash', temperature=0.6)
 embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 vectorstore = Chroma(
@@ -102,11 +105,26 @@ if user_prompt:
 
     with st.chat_message("assistant"):
         with st.spinner("Đang xử lý câu trả lời..."):
-            docs = retriever.invoke(user_prompt)
-            context = format_docs(docs)
-            prompt = create_prompt(context, user_prompt)
-            response = llm.invoke(prompt).content
+            try:
+                # Ensure these functions are correctly defined and error-handled
+                docs = retriever.invoke(user_prompt)  # Retrieve relevant documents
+                context = format_docs(docs)  # Format the documents
+                prompt = create_prompt(context, user_prompt)  # Create prompt for LLM
+                response = llm.invoke(prompt).content  # Get response from LLM
+            except Exception as e:
+                response = f"Đã xảy ra lỗi: {str(e)}"
+
+        #Display assistant's response
         st.markdown(response)
 
         st.session_state.messages.append({"role": "assistant", "content": response})
 
+        # Scroll to the bottom of the page using JavaScript
+        st.markdown("""
+                <script>
+                var chatBox = window.parent.document.querySelector('section.main');
+                chatBox.scrollTop = chatBox.scrollHeight;
+                </script>
+                """, unsafe_allow_html=True)
+
+user_prompt = ''

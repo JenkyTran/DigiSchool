@@ -6,8 +6,8 @@ from langchain.schema import Document
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 
-DATA_PATH = "/home/jenky/Documents/DigiSchool/MiraiGPT/monopoly.pdf"
-PERSIST_DIRECTORY = '/home/jenky/Documents/DigiSchool/MiraiGPT/chroma_db'
+DATA_PATH = "./MiraiGPT/bookdb/doc.pdf"
+PERSIST_DIRECTORY = './MiraiGPT/chroma_db'
 
 
 def main():
